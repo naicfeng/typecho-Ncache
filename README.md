@@ -1,6 +1,6 @@
 本插件需要 WEB 服务器为 Nginx 并且需要 ngx_cache_purge 模块支持
 
-###插件特性
+### 插件特性
 
 支持所有页面缓存
 支持内容修改之后自动更新内容、分类、首页缓存
@@ -8,11 +8,11 @@
 支持登录状态下不缓存
 支持搜索等动态页面不缓存
 
-###更新日志
+### 更新日志
 
 v1.0 初始版本
 
-###已知问题
+### 已知问题
 
 非js方式的访问统计插件会失效
 
@@ -89,7 +89,7 @@ server
 	}
 ```
 
-###缓存效果
+### 缓存效果
 
 替换新的配置，并且重载Nginx之后，访问前台页面，查看header，会多出一个 X-Cuojue-Cache 标志。
 
@@ -108,9 +108,20 @@ X-Cuojue-Cache 一般会有3个状态：MISS、HIT、BYPASS。
 
 *如果你发现想要缓存的页面却是这个状态，就可以去检查排除规则中是不是包含了这个路径！反之，如果你发现后台登录不了，或者各种登陆态丢失问题，则应该到排除规则中加上该页面路径的关键字。*
 
-###下载地址
+
+### 进阶操作
+#### 评论者信息被缓存修复
+typecho主题一般使用php的函数获取cookies来填充评论者信息，导致了如果用户评论了文章，就会缓存评论者的信息，如何修复参考下面的文章
+https://cuojue.org/read/typecho_comments_author_javascript.html
+
+#### Set-Cookie头处理
+使用了fastcgi_cache来缓存所有页面，导致了一个问题，那就是set-cookie也被缓存了，其他用户再次访问会导致被设置缓存的cookie，解决方法见下文。
+https://cuojue.org/read/fastcgi_cache_fix_cookies.html
+
+### 下载地址
 
 链接：https://disk.cuojue.org/s/xddxbbdx   密码：ncache
+
 
 
 参考：
