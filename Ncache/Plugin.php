@@ -4,7 +4,7 @@
  * 
  * @package Ncache
  * @author WeiCN
- * @version 1.0
+ * @version 1.1
  * @link https://cuojue.org
  */
 class Ncache_Plugin implements Typecho_Plugin_Interface
@@ -46,7 +46,7 @@ class Ncache_Plugin implements Typecho_Plugin_Interface
      */
     public static function config(Typecho_Widget_Helper_Form $form)
     {
-        $selectArr = array('\/$|\/page\/\d'=>'首页','\/category'=>'分类','\/archive'=>'内容页','\/.*?\.(htm|html)$'=>'独立页面'          );
+        $selectArr = array('\/$|\/page\/\d'=>'首页','\/category'=>'分类','\/archive'=>'内容页','\/tags'=>'标签页面'          );
         $element = new Typecho_Widget_Helper_Form_Element_Checkbox('cacheType', $selectArr, array(),'自动更新缓存项目', '更新文章后，刷新哪部分缓存');
         $form->addInput($element);
 
@@ -55,16 +55,11 @@ class Ncache_Plugin implements Typecho_Plugin_Interface
           '地址重写', 'typecho <a href="options-permalink.php">永久链接设置</a> 需要与本处设置完全一致');
         $form->addInput($element);
 
-        $element = new Typecho_Widget_Helper_Form_Element_Text('ncache_archives', NULL,'', _t('文章路径'),'');
+        $element = new Typecho_Widget_Helper_Form_Element_Textarea('addurl', NULL, "?_pjax=%23content",
+			_t('Url后缀'), _t('多条后缀请用换行符隔开<br />如果启用了pjax之类的插件获取新页面会附带后缀，这里填写会一并刷新'));
         $form->addInput($element);
 
-        $element = new Typecho_Widget_Helper_Form_Element_Text('ncache_html', NULL,'', _t('独立页面路径'),'');
-        $form->addInput($element);
-
-        $element = new Typecho_Widget_Helper_Form_Element_Text('ncache_category', NULL,'', _t('分类路径'),'');
-        $form->addInput($element);
-
-        $element = new Typecho_Widget_Helper_Form_Element_Text('ncache_token', NULL,'', _t('nginx刷新缓存的token'),'字符串');
+        $element = new Typecho_Widget_Helper_Form_Element_Text('ncache_token', NULL,'', _t('nginx刷新缓存的token'),'这里设置需要与Nginx内配置完全相同<br />配置方法见<a href="https://cuojue.org/read/typecho-fastcgi_cache.html" target="_blank">配置说明</a>');
         $form->addInput($element);
     }
     /**
@@ -82,9 +77,26 @@ class Ncache_Plugin implements Typecho_Plugin_Interface
 	public static function delCache($param,$param2){
 		$config  = Helper::options()->plugin(self::$pluginName);
 		$index_url = "";
+		$root_url = Helper::options()->rootUrl;
 		if($config->permalink==0)$index_url = "/index.php";
 		if(is_object($param) and intval($param->cid)>0){#评论更新
-			self::del($index_url.preg_replace('/\/comment$/i','',$param->request->getPathinfo()));
+			$delcommenturl = $index_url.preg_replace('/\/comment$/i','',$param->request->getPathinfo());
+			$del = array($delcommenturl);
+			//评论分页
+			$size = (int) Helper::options()->commentsPageSize;
+			if($size>0){
+				$db = Typecho_Db::get();
+				$num = $db->fetchRow($db->select('commentsNum')->from('table.contents')->where('cid = ?', $param->cid));
+				$currentPage = ceil($num["commentsNum"] / $size);
+				for ($x=1; $x<=$currentPage; $x++) {
+					$pageRow = array('permalink' => $delcommenturl, 'commentPage' => $x);
+					$delurl = Typecho_Router::url('comment_page', $pageRow, Helper::options()->index);
+					$delurl = str_ireplace($root_url,"",$delurl);
+					array_push($del,$delurl);
+					unset($pageRow,$delurl);
+				}
+			}
+			self::del($del);
 		}elseif(is_array($param) and $param['text']){#发布文章更新
 			$s = implode('|',$config->cacheType);
 			$del = array($index_url.$param2->pathinfo);
@@ -93,8 +105,15 @@ class Ncache_Plugin implements Typecho_Plugin_Interface
 			}
 			if(strstr($s, 'category',TRUE)){
 				foreach ($param2->categories as $key => $value) {
-					$pregc = $index_url.str_ireplace(array("{mid}","{slug}","{directory}"),array($value['mid'],$value['slug'],$value['directory']),$config->ncache_category);
-					array_push($del, $pregc);
+					$delurl = str_ireplace($root_url,"",$value["permalink"]);
+					array_push($del, $delurl);
+					unset($pregc);
+				}
+			}
+			if(strstr($s, 'tags',TRUE) && count($param2->tags)>0){
+				foreach ($param2->tags as $key => $value) {
+					$delurl = str_ireplace($root_url,"",$value["permalink"]);
+					array_push($del, $delurl);
 					unset($pregc);
 				}
 			}
@@ -123,7 +142,11 @@ class Ncache_Plugin implements Typecho_Plugin_Interface
 		}else{
 //			file_put_contents(dirname(__FILE__) . '/cache/log.txt', "{$root_url}/{$token}/_clean_cache{$cachekey}".PHP_EOL, FILE_APPEND);
 			file_get_contents("{$root_url}/{$token}/_clean_cache{$cachekey}");
-			file_get_contents("{$root_url}/{$token}/_clean_cache{$cachekey}?_pjax=%23content");//pjax路径缓存清理
+			$words = explode("\n", $config->addurl);
+			foreach ($words as $word) {
+				file_get_contents("{$root_url}/{$token}/_clean_cache{$cachekey}{$word}");
+			}
+//			file_get_contents("{$root_url}/{$token}/_clean_cache{$cachekey}?_pjax=%23content");//pjax路径缓存清理
 /*			缓存路径，预留，可手动删除文件位置
 			$key = md5($cachekey);
 			$dir1 = substr($key,-1,1);
