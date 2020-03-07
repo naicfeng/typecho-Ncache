@@ -10,7 +10,12 @@
 
 ### 更新日志
 
-v1.0 初始版本
+v1.0
+初始版本
+v1.1
+修复评论分页刷新
+增加Tag页面刷新
+增加自定义刷新后缀
 
 ### 已知问题
 
@@ -120,10 +125,11 @@ https://cuojue.org/read/fastcgi_cache_fix_cookies.html
 
 ### 下载地址
 
-链接：https://disk.cuojue.org/s/xddxbbdx   密码：ncache
+链接：https://disk.cuojue.org/cloud/Typecho/Plugins/Ncache.zip
 
 
 
 参考：
 [Nginx开启fastcgi_cache缓存加速，支持html伪静态页面 | 张戈博客](https://zhangge.net/5042.html "Nginx开启fastcgi_cache缓存加速，支持html伪静态页面 | 张戈博客")
+
 [为typecho增加缓存功能,支持memcached缓存](https://cuojue.org/read/typecho-cache-memcache.html "为typecho增加缓存功能,支持memcached缓存")
